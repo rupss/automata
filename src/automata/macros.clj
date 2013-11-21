@@ -24,6 +24,10 @@
   [x]
   `(println ~x))
 
+(defmacro test3
+  []
+  `(defn bar [] (println "hello")))
+
 ;; (map inc [..])
 ;; (println [..])
 (defmacro test
@@ -33,21 +37,21 @@
 (def test-dfa {:S0 {:start true :result :accept :transitions {0 :S0 1 :S1}}
                :S1 {:result :reject :transitions {0 :S0 1 :S1}}})
 
-;; ([[~char . ?rem] 
-
 (defn build-transition
   [[char state]]
   `([[~char . ?rem] ?out] (~state ?rem ?out)))
 
-(defmacro my-matche
+(defn my-matche
   [state]
   (let [trans-vecs (seq (:transitions state))]
-    (println (first trans-vecs))
-    (println trans-vecs)
     `(matche [input out]
              ([[] ~(:result state)])
             ; ~(build-transition (first trans-vecs))
              ~@(map build-transition trans-vecs))))
+
+(defn write-state-function
+  [state-name state]
+  `(~state-name [input output] ~(my-matche state)))
  
 (defn mult-3-logico
   [input]
