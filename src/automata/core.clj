@@ -74,3 +74,35 @@
                          ([[\0 . ?rem] ?out] (S1 ?rem ?out))
                          ([[\1 . ?rem] ?out] (S2 ?rem ?out))))]
          (S0 (seq (Integer/toString input)) q))))
+
+;; uses core.logic and mutual recursion
+(defn nfa-o
+  "accepts strings that match a*b*c+"
+  [input]
+    (run 10 [q]
+       (letfn [(S0
+                 [input out]
+                 (conde [(matche [input out]
+                           ([[] 'reject])
+                           ([[\a . ?rem] ?out] (S0 ?rem ?out))
+                           )]
+                        [(S1 input out)]))
+               (S1
+                 [input out]
+                 (conde [(matche [input out]
+                                 ([[] 'reject])
+                                 ([[\b . ?rem] ?out] (S1 ?rem ?out))
+                                 )]
+                        [(S2 input out)]))
+               (S2
+                 [input out]
+                 (conde [(matche [input out]
+                                 ([[] 'reject])
+                                 ([[\c . ?rem] ?out] (S3 ?rem ?out)))]))
+
+               (S3
+                 [input out]
+                 (conde [(matche [input out]
+                                 ([[] 'accept])
+                                 ([[\c . ?rem] ?out] (S3 ?rem ?out)))]))]
+         (S0 (into [] (seq input)) q))))
