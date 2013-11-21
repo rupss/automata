@@ -3,6 +3,7 @@
   (:use [clojure.core.logic])
   (:require [clojure.core.logic.fd :as fd]))
 
+;; Recursive approach without core.logic
 (defn mult-3*
   [input curr-state]
   (let [ch (first input)]
@@ -24,6 +25,7 @@
   [input]
   (mult-3* (seq (Integer/toString input)) :S0))
 
+;; using a Clojure/core.logic approach (returns nested lists though)
 (defn mult-3-logico*
   [input curr-state]
   (run* [q]
@@ -45,10 +47,30 @@
            [(== (first input) \1) (== q (mult-3-logico* (rest input) :S2))])])))
 
 (defn mult-3-logico
+  "accepts binary numbers that are multiples of 3"
   [input]
   (mult-3-logico* (seq (Integer/toString input)) :S0))
 
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println (mult-3 1001)))
+;; using mutual recursion and core.logic - thanks Will! 
+(defn mult-3-logico
+  [input]
+  (run 10 [q] 
+       (letfn [(S0
+                 [input out]
+                 (matche [input out]
+                         ([[] 'accept])
+                         ([[\0 . ?rem] ?out] (S0 ?rem ?out))
+                         ([[\1 . ?rem] ?out] (S1 ?rem ?out))))
+               (S1
+                 [input out]
+                 (matche [input out]
+                         ([[] 'reject])
+                         ([[\0 . ?rem] ?out] (S2 ?rem ?out))
+                         ([[\1 . ?rem] ?out] (S0 ?rem ?out))))
+               (S2
+                 [input out]
+                 (matche [input out]
+                         ([[] 'reject])
+                         ([[\0 . ?rem] ?out] (S1 ?rem ?out))
+                         ([[\1 . ?rem] ?out] (S2 ?rem ?out))))]
+         (S0 (seq (Integer/toString input)) q))))
