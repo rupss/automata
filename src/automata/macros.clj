@@ -49,9 +49,13 @@
     (cons `([[] ~(:result state)])
           `(~@(map build-transition trans-vecs)))))
 
+(defn hash-symbol-name
+  [sym-name]
+  (symbol (str (str sym-name) "#")))
+
 (defn write-state-function
   [[state-name state]]
-  `(~state-name [input# out#]
+  `(~(hash-symbol-name state-name) [input# out#]
                 (matche [input# out#]
                         ~@(my-matche state))))
 
@@ -64,12 +68,15 @@
   `(defn my-dfa [input#]
      (run 5 [q#]
            (letfn [~@(map write-state-function (seq dfa))]
-             (~(get-start-state dfa) input# q#)))))
+             (~(hash-symbol-name (get-start-state dfa)) input# q#)))))
 
 (defmacro build-automata-fn [dfa]
   `~(write-run-expr dfa))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(run 10 [q]
+     (letfn ))
 
 (defn get-vec
   []
@@ -127,7 +134,34 @@
 (defmacro foo
   []
   `(defn bar [x#] (println "hello")))
-  
+
+(defn mrec
+  [input]
+  (run 10 [q]
+       (letfn [(S0 [input]
+                 (== q input))
+               (S1 [input] (== q input))]
+         (S0 input))))
+
+(defmacro ltest
+  []
+  `(defn mrec
+     [input#]
+     (run 10 [q#]
+          (letfn [(S0# [input#]
+                    (== q# input#))
+                  (S1# [input#] (== q# input#))]
+            (S0# input#)))))
+
+;; works
+(defmacro ltest
+  []
+  `(run 10 [q#]
+     (letfn [(S0# []
+               (== q# 2))
+             (S1# [] (== q# 1))]
+       (S0#))))
+
 (defn mult-3-logico
   [input]
   (run 10 [q] 
