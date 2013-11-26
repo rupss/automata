@@ -70,7 +70,7 @@
   [dfa]
   (let [fn-names (make-fn-name-map dfa)]
     (eval
-     `(defn my-dfa [input#]
+     `(fn [input#]
         (run 5 [q#]
              (letfn [~@(map #(write-state-function % fn-names) (seq dfa))]
                (~(fn-names (get-start-state dfa)) input# q#)))))))
