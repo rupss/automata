@@ -40,38 +40,40 @@
                'S1 {:result :reject :transitions {0 'S0 1 'S1}}})
 
 (defn build-transition
-  [[char state]]
-  `([[~char . ?rem#] ?out] (~state ?rem# ?out#)))
+  [[char state] fn-names]
+  `([[~char . ?rem#] ?out#] (~(fn-names state) ?rem# ?out#)))
 
 (defn my-matche
-  [state]
+  [state fn-names]
   (let [trans-vecs (seq (:transitions state))]
     (cons `([[] ~(:result state)])
-          `(~@(map build-transition trans-vecs)))))
-
-(defn hash-symbol-name
-  [sym-name]
-  (symbol (str (str sym-name) "#")))
+          `(~@(map (fn [vec] (build-transition vec fn-names)) trans-vecs)))))
 
 (defn write-state-function
-  [[state-name state]]
-  `(~(hash-symbol-name state-name) [input# out#]
+  [[state-name state] fn-names]
+  `(~(fn-names state-name) [input# out#]
                 (matche [input# out#]
-                        ~@(my-matche state))))
+                        ~@(my-matche state fn-names))))
 
 (defn get-start-state
   [dfa]
-  (-> (filter (fn [[name state]] (-> state :start nil? not)) (seq dfa)) first first))
+  (-> (filter (fn [[name state]] (-> state :start nil? not)) (seq dfa))
+      first
+      first))
 
-(defn write-run-expr
+(defn make-fn-name-map
   [dfa]
-  `(defn my-dfa [input#]
-     (run 5 [q#]
-           (letfn [~@(map write-state-function (seq dfa))]
-             (~(hash-symbol-name (get-start-state dfa)) input# q#)))))
+  (let [gensym-pairs (map #(hash-map % (gensym %)) (keys dfa))]
+    (reduce conj {} gensym-pairs)))
 
-(defmacro build-automata-fn [dfa]
-  `~(write-run-expr dfa))
+(defn build-automata-fn
+  [dfa]
+  (let [fn-names (make-fn-name-map dfa)]
+    (eval
+     `(defn my-dfa [input#]
+        (run 5 [q#]
+             (letfn [~@(map #(write-state-function % fn-names) (seq dfa))]
+               (~(fn-names (get-start-state dfa)) input# q#)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -138,20 +140,110 @@
 (defn mrec
   [input]
   (run 10 [q]
-       (letfn [(S0 [input]
-                 (== q input))
-               (S1 [input] (== q input))]
-         (S0 input))))
+       (letfn [(S0 [input out]
+                 (matche [input out]
+                         ([[] :accept])
+                         ([[0 . ?rem] ?out] (S1 ?rem ?out))))
+               (S1 [input out]
+                 (matche [input out]
+                         ([[] :reject])
+                         ([[1 . ?rem] ?out] (S0 ?rem ?out))))]
+         (S0 input q))))
 
+(defn get-s0
+  []
+  '(S0))
+
+;; works
+(defn ltest
+  [dfa]
+  (println dfa)
+  (let [fn-names {'S0 (gensym 'S0) 'S1 (gensym 'S1)}
+        start-state (get-start-state dfa)
+        gensym-start-state (fn-names start-state)
+        ]
+    (println start-state)
+    (eval `(defn mrec
+            [input#]
+            (run 10 [q#]
+                 (letfn [(~(fn-names 'S0) [input# out#]
+                          (matche [input# out#]
+                                  ~@(my-matche (test-dfa 'S0) fn-names)))
+                         (~(fn-names 'S1) [input# out#]
+                          (matche [input# out#]
+                                  ~@(my-matche (test-dfa 'S1) fn-names)))]
+                   (~gensym-start-state input# q#)))))))
+
+(clojure.core/defn
+ automata.core/mrec
+ [input__10997__auto__]
+ (clojure.core.logic/run
+  10
+  [q__10998__auto__]
+  (clojure.core/letfn
+   [(S011099
+     [input__10997__auto__ out__10999__auto__]
+     (clojure.core.logic/matche
+      [input__10997__auto__ out__10999__auto__]
+      ([[] :accept])
+      ([[0 . ?rem__10389__auto__] ?out__10390__auto__]
+       (S011099 ?rem__10389__auto__ ?out__10390__auto__))
+      ([[1 . ?rem__10389__auto__] ?out__10390__auto__]
+       (S011099 ?rem__10389__auto__ ?out__10390__auto__))))
+    (S111100
+     [input__10997__auto__ out__10999__auto__]
+     (clojure.core.logic/matche
+      [input__10997__auto__ out__10999__auto__]
+      ([[] :accept])
+      ([[0 . ?rem__10389__auto__] ?out__10390__auto__]
+       (S011099 ?rem__10389__auto__ ?out__10390__auto__))
+      ([[1 . ?rem__10389__auto__] ?out__10390__auto__]
+       (S011099 ?rem__10389__auto__ ?out__10390__auto__))))])))
+
+;; works
 (defmacro ltest
   []
-  `(defn mrec
-     [input#]
-     (run 10 [q#]
-          (letfn [(S0# [input#]
-                    (== q# input#))
-                  (S1# [input#] (== q# input#))]
-            (S0# input#)))))
+  (let [S0 (gensym 'S0)
+        S1 (gensym 'S1)]
+    `(defn mrec
+       [input#]
+       (run 10 [q#]
+            (letfn [(~S0 [input# out#]
+                      (matche [input# out#]
+                              ([[] :accept])
+                              ([[0 . ?rem#] ?out#] (~S1 ?rem# ?out#))
+                              ([[1 . ?rem#] ?out#] (~S0 ?rem# ?out#))))
+                    (~S1 [input# out#]
+                      (matche [input# out#]
+                              ([[] :reject])
+                              ([[1 . ?rem#] ?out#] (~S0 ?rem# ?out#))))]
+              (~S0 input# q#))))))
+
+(def
+ automata.core/mrec
+ (clojure.core/fn
+  ([input__10495__auto__]
+   (clojure.core.logic/run
+    10
+    [q__10496__auto__]
+    (clojure.core/letfn
+     [(S010608
+       [input__10495__auto__ out__10497__auto__]
+       (clojure.core.logic/matche
+        [input__10495__auto__ out__10497__auto__]
+        ([[] :accept])
+        ([[0 . ?rem__10498__auto__] ?out__10499__auto__]
+         (S110609 ?rem__10498__auto__ ?out__10499__auto__))
+        ([[1 . ?rem__10498__auto__] ?out__10499__auto__]
+         (S010608 ?rem__10498__auto__ ?out__10499__auto__))))
+      (S110609
+       [input__10495__auto__ out__10497__auto__]
+       (clojure.core.logic/matche
+        [input__10495__auto__ out__10497__auto__]
+        ([[] :reject])
+        ([[1 . ?rem__10498__auto__] ?out__10499__auto__]
+         (S010608 ?rem__10498__auto__ ?out__10499__auto__))))]
+     (S010608 input__10495__auto__ q__10496__auto__))))))
 
 ;; works
 (defmacro ltest
@@ -187,34 +279,26 @@
 
 
 
-(def
- automata.core/my-dfa
- (clojure.core/fn
-  ([input__6975__auto__]
-   (clojure.core.logic/run
-    5
-    [q__6972__auto__]
-    (clojure.core/letfn
-        [
-
-      (S0
-       [input__7150__auto__ out__7151__auto__]
-       (clojure.core.logic/matche
-        [input__7023__auto__ out__7024__auto__]
-        ([[] :accept])
-        ([[0 . ?rem__6997__auto__] ?out__6998__auto__]
-         (S0 ?rem__6997__auto__ ?out__6998__auto__))
-        ([[1 . ?rem__6997__auto__] ?out__6998__auto__]
-          (S1 ?rem__6997__auto__ ?out__6998__auto__))))
-
-      
-      (S1
-       [input__7150__auto__ out__7151__auto__]
-       (clojure.core.logic/matche
-        [input__7023__auto__ out__7024__auto__]
-        ([[] :reject])
-        ([[0 . ?rem__6997__auto__] ?out__6998__auto__]
-         (S0 ?rem__6997__auto__ ?out__6998__auto__))
-        ([[1 . ?rem__6997__auto__] ?out__6998__auto__]
-         (S1 ?rem__6997__auto__ ?out__6998__auto__))))]
-     (S0 input__6973__auto__ q__6972__auto__))))))
+;; WORKS
+(clojure.core/defn
+ automata.core/mrec
+ [input__9070__auto__]
+ (clojure.core.logic/run
+  10
+  [q__9071__auto__]
+  (clojure.core/letfn
+   [(S0__9072__auto__
+     [input__9070__auto__ out__9073__auto__]
+     (clojure.core.logic/matche
+      [input__9070__auto__ out__9073__auto__]
+      ([[] :accept])
+      ([[0 . ?rem__9074__auto__] ?out__9075__auto__]
+       (S1__9076__auto__ ?rem__9074__auto__ ?out__9075__auto__))))
+    (S1__9076__auto__
+     [input__9070__auto__ out__9073__auto__]
+     (clojure.core.logic/matche
+      [input__9070__auto__ out__9073__auto__]
+      ([[] :reject])
+      ([[1 . ?rem__9074__auto__] ?out__9075__auto__]
+       (S0__9072__auto__ ?rem__9074__auto__ ?out__9075__auto__))))]
+   (S0__9072__auto__ input__9070__auto__ q__9071__auto__))))
