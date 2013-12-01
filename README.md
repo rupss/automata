@@ -1,36 +1,17 @@
 # automata
 
-FIXME: description
+Implementing DFAs (deterministic finite automata) and NFAs (nondeterministic
+finite automata using core.logic and writing macros to automatically do so. 
+This was an exercise in logic programming and macros.
 
-## Installation
+## Prerequisites
 
-Download from http://example.com/FIXME.
+You will need Leiningen 2.0 or above installed.
 
 ## Usage
 
-FIXME: explanation
-
-    $ java -jar automata-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+Right now, there is no main function - use in the REPL.
 
 ## License
 
-Copyright © 2013 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2013 Rupa Shankar
